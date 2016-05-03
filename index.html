@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>lisp game jam</title>
+    <style>
+     canvas {
+         position: absolute;
+         top: 0;
+         left: 0;
+         width: 800px;
+         height: 600px;
+     }
+     .ground {
+         z-index: 0;
+     }
+     .main {
+         z-index: 1;
+     }
+     .selection {
+         z-index: 2;
+         opacity: .5;
+     }
+     .arrow {
+         z-index: 3;
+     }
+     .tmux {
+         position: absolute;
+         bottom: 0;
+         height: 2.4rem;
+         line-height: 2.4rem;
+         width: 100%;
+         left: 0;
+         background: green;
+     }
+    </style>
+  </head>
+  <body>
+    <canvas class="ground"></canvas>
+    <canvas class="main"></canvas>
+    <canvas class="selection"></canvas>
+    <canvas class="arrow"></canvas>
+    <div class="tmux">
+        <div class="select-mode">navigation</div>
+    </div>
+    <script src="./dist/main.js" charset="utf-8"></script>
+  </body>
+</html>

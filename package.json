@@ -1,0 +1,16 @@
+{
+  "name": "lisp-game-jam",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "dependencies": {},
+  "devDependencies": {},
+  "scripts": {
+    "preinstall": "mkdir dist && touch dist/main.js",
+    "lisp": "./node_modules/.bin/lispy src/main.ls* dist/main.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
