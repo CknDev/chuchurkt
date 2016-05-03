@@ -96,6 +96,23 @@
                            (= currentDirection direction.LEFT)
                             (list (- x xPadd) y))))
 
+;; put an direction in arrow mode
+(var arrowSelect (function (currentDirection image sizeBlock selectedBlock ctx)
+                           ;; arrow tileSet
+                           (var arrowTileSet (object UP    (list 0 0 50 50)
+                                                     RIGHT (list 50 0 50 50)
+                                                     DOWN  (list 100 0 50 50)
+                                                     LEFT  (list 150 0 50 50)))
+                           (var x (car selectedBlock))
+                           (var y (car (cdr selectedBlock)))
+                           (set [sx, sy, sw, sh] arrowTileSet[currentDirection])
+                           (set [dw, dh] sizeBlock)
+                           ;; clear block where the arrow will be put
+                           (ctx.clearRect x y dw dh)
+                           ;; right arrow
+                           (ctx.drawImage image
+                                          sx sy sw sh
+                                          x y dw dh)))
 
 ;; append select mode to dom
 (var domSelectMode (function(currentMode)
@@ -125,14 +142,20 @@
                       DOWN 40
                       LEFT 37
                       SPACE 32))
+;; arrow tileSet
+(var arrowTileSet (list (object UP (list 0 0 50 0))
+                        (object RIGHT (list 50 0 50 0))
+                        (object DOWN (list 100 0 50 0))
+                        (object LEFT (list 150 0 50 0))))
+
 ;; select mode navigation <-> arrow
 (var selectMode "navigation")
 (domSelectMode selectMode)
 
 (var tileInit (function()
-                         (set tileSet (new Image))
-                         (set tileSet.src "./dist/assets/tileset.png")
-                         tileSet))
+                         (set tileMap (new Image))
+                         (set tileMap.src "./dist/assets/tileset.png")
+                         tileMap))
 (var TILE_SIZE (list 25 15)) ;; px
 (var WIN_WIDTH 800) ;; px
 (var WIN_HEIGHT 600) ;; px
@@ -152,7 +175,6 @@
 (arrow.scale 1.0 1.0)
 
 (var spriteSheet (tileInit))
-(set spriteSheet.onload (function () (arrow.drawImage spriteSheet 50 0 50 50 0 0 25 15)))
 
 (var clearMainCanvas (function ()
                                (clr CANVAS_MAIN.width CANVAS_MAIN.height main)))
@@ -164,41 +186,61 @@
 
 (tilify 0 0 WIN_WIDTH WIN_HEIGHT (car TILE_SIZE) (car (cdr TILE_SIZE)) ground)
 (var block_selected (list 0 0))
-(write "^" (centerize (list (* 4 (car block_size)) 0) block_size) arrow)
-(display (centerize (list 0 0) block_size))
 
 (listen "keyup" (function (e)
                           (e.preventDefault)
                           (cond (= e.keyCode keyboard.SPACE)
                                 (set selectMode (toggleMode selectMode)))
-                          (cond (= e.keyCode keyboard.UP)
-                                (clearSelectionCanvas
-                                 (set block_selected
-                                      (moveSelect "UP"
-                                                  block_size
-                                                  block_selected))))
-                          (cond (= e.keyCode keyboard.RIGHT)
-                                (clearSelectionCanvas
-                                 (set block_selected
-                                      (moveSelect "RIGHT"
-                                                  block_size
-                                                  block_selected))))
-                          (cond (= e.keyCode keyboard.DOWN)
-                                (clearSelectionCanvas
-                                 (set block_selected
-                                      (moveSelect "DOWN"
-                                                  block_size
-                                                  block_selected))))
-                          (cond (= e.keyCode keyboard.LEFT)
-                                (clearSelectionCanvas
-                                 (set block_selected
-                                      (moveSelect "LEFT"
-                                                  block_size
-                                                  block_selected))))))
-
+                          (cond (= selectMode "navigation")
+                                ((cond (= e.keyCode keyboard.UP)
+                                       (clearSelectionCanvas
+                                        (set block_selected
+                                             (moveSelect "UP"
+                                                         block_size
+                                                         block_selected))))
+                                 (cond (= e.keyCode keyboard.RIGHT)
+                                       (clearSelectionCanvas
+                                        (set block_selected
+                                             (moveSelect "RIGHT"
+                                                         block_size
+                                                         block_selected))))
+                                 (cond (= e.keyCode keyboard.DOWN)
+                                       (clearSelectionCanvas
+                                        (set block_selected
+                                             (moveSelect "DOWN"
+                                                         block_size
+                                                         block_selected))))
+                                 (cond (= e.keyCode keyboard.LEFT)
+                                       (clearSelectionCanvas
+                                        (set block_selected
+                                             (moveSelect "LEFT"
+                                                         block_size
+                                                         block_selected))))))
+                          (cond (= selectMode "arrow")
+                                ((cond (= e.keyCode keyboard.UP)
+                                        (arrowSelect "UP" spriteSheet
+                                                     block_size
+                                                     block_selected
+                                                     arrow)
+                                       (= e.keyCode keyboard.RIGHT)
+                                        (arrowSelect "RIGHT" spriteSheet
+                                                     block_size
+                                                     block_selected
+                                                     arrow)
+                                       (= e.keyCode keyboard.DOWN)
+                                        (arrowSelect "DOWN" spriteSheet
+                                                     block_size
+                                                     block_selected
+                                                     arrow)
+                                       (= e.keyCode keyboard.LEFT)
+                                        (arrowSelect "LEFT" spriteSheet
+                                                     block_size
+                                                     block_selected
+                                                     arrow))))
+                          false))
 
 (var x 0)
-(var update (setInterval
+(var update (function () (setInterval
              (function()
                       (clearMainCanvas)
                       (set x (+ x 15)) ;; vel.x
@@ -206,4 +248,8 @@
                       (rect (list x 0) block_size main)
                       (select block_selected block_size selection)
                       (background "red" main))
-             100))
+             100)))
+
+;; load sprites then init game
+(set spriteSheet.onload (function () (update)))
+

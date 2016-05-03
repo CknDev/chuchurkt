@@ -92,6 +92,21 @@ var moveSelect = function(currentDirection,padd,selectionBlock) {
                     list((x - xPadd),y) :
                     undefined))));
 };
+var arrowSelect = function(currentDirection,image,sizeBlock,selectedBlock,ctx) {
+    display(currentDirection);
+    var arrowTileSet = {
+        UP: list(0,0,50,50),
+        RIGHT: list(50,0,50,50),
+        DOWN: list(100,0,50,50),
+        LEFT: list(150,0,50,50)
+    };
+    var x = car(selectedBlock);
+    var y = car(cdr(selectedBlock));
+    [sx, sy, sw, sh] = arrowTileSet[currentDirection];
+    [dw, dh] = sizeBlock;
+    ctx.clearRect(x,y,dw,dh);
+    return ctx.drawImage(image,sx,sy,sw,sh,x,y,dw,dh);
+};
 var domSelectMode = function(currentMode) {
     var el = $(".select-mode");
     el.innerHTML = currentMode;
@@ -120,12 +135,21 @@ var keyboard = {
     LEFT: 37,
     SPACE: 32
 };
+var arrowTileSet = list({
+    UP: list(0,0,50,0)
+},{
+    RIGHT: list(50,0,50,0)
+},{
+    DOWN: list(100,0,50,0)
+},{
+    LEFT: list(150,0,50,0)
+});
 var selectMode = "navigation";
 domSelectMode(selectMode);
 var tileInit = function() {
-    tileSet = new Image();
-    tileSet.src = "./dist/assets/tileset.png";
-    return tileSet;
+    tileMap = new Image();
+    tileMap.src = "./dist/assets/tileset.png";
+    return tileMap;
 };
 var TILE_SIZE = list(25,15);
 var WIN_WIDTH = 800;
@@ -144,9 +168,6 @@ ground.scale(1.0,1.0);
 selection.scale(1.0,1.0);
 arrow.scale(1.0,1.0);
 var spriteSheet = tileInit();
-spriteSheet.onload = function() {
-    return arrow.drawImage(spriteSheet,50,0,50,50,0,0,25,15);
-};
 var clearMainCanvas = function() {
     return clr(CANVAS_MAIN.width,CANVAS_MAIN.height,main);
 };
@@ -155,34 +176,48 @@ var clearSelectionCanvas = function() {
 };
 tilify(0,0,WIN_WIDTH,WIN_HEIGHT,car(TILE_SIZE),car(cdr(TILE_SIZE)),ground);
 var block_selected = list(0,0);
-write("^",centerize(list((4 * car(block_size)),0),block_size),arrow);
-display(centerize(list(0,0),block_size));
 listen("keyup",function(e) {
     e.preventDefault();
     ((e.keyCode === keyboard.SPACE) ?
         selectMode = toggleMode(selectMode) :
         undefined);
-    ((e.keyCode === keyboard.UP) ?
-        clearSelectionCanvas(block_selected = moveSelect("UP",block_size,block_selected)) :
+    ((selectMode === "navigation") ?
+        ((e.keyCode === keyboard.UP) ?
+            clearSelectionCanvas(block_selected = moveSelect("UP",block_size,block_selected)) :
+            undefined)(((e.keyCode === keyboard.RIGHT) ?
+            clearSelectionCanvas(block_selected = moveSelect("RIGHT",block_size,block_selected)) :
+            undefined),((e.keyCode === keyboard.DOWN) ?
+            clearSelectionCanvas(block_selected = moveSelect("DOWN",block_size,block_selected)) :
+            undefined),((e.keyCode === keyboard.LEFT) ?
+            clearSelectionCanvas(block_selected = moveSelect("LEFT",block_size,block_selected)) :
+            undefined)) :
         undefined);
-    ((e.keyCode === keyboard.RIGHT) ?
-        clearSelectionCanvas(block_selected = moveSelect("RIGHT",block_size,block_selected)) :
+    ((selectMode === "arrow") ?
+        ((e.keyCode === keyboard.UP) ?
+            arrowSelect("UP",spriteSheet,block_size,block_selected,arrow) :
+            ((e.keyCode === keyboard.RIGHT) ?
+                arrowSelect("RIGHT",spriteSheet,block_size,block_selected,arrow) :
+                ((e.keyCode === keyboard.DOWN) ?
+                    arrowSelect("DOWN",spriteSheet,block_size,block_selected,arrow) :
+                    ((e.keyCode === keyboard.LEFT) ?
+                        arrowSelect("LEFT",spriteSheet,block_size,block_selected,arrow) :
+                        undefined))))() :
         undefined);
-    ((e.keyCode === keyboard.DOWN) ?
-        clearSelectionCanvas(block_selected = moveSelect("DOWN",block_size,block_selected)) :
-        undefined);
-    return ((e.keyCode === keyboard.LEFT) ?
-        clearSelectionCanvas(block_selected = moveSelect("LEFT",block_size,block_selected)) :
-        undefined);
+    return false;
 });
 var x = 0;
-var update = setInterval(function() {
-    clearMainCanvas();
-    x = (x + 15);
-    ((x === 800) ?
-        clearInterval(update) :
-        undefined);
-    rect(list(x,0),block_size,main);
-    select(block_selected,block_size,selection);
-    return background("red",main);
-},100);
+var update = function() {
+    return setInterval(function() {
+        clearMainCanvas();
+        x = (x + 15);
+        ((x === 800) ?
+            clearInterval(update) :
+            undefined);
+        rect(list(x,0),block_size,main);
+        select(block_selected,block_size,selection);
+        return background("red",main);
+    },100);
+};
+spriteSheet.onload = function() {
+    return update();
+};
