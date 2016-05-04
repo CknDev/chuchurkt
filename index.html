@@ -32,6 +32,9 @@
          width: 100%;
          left: 0;
          background: green;
+         display: flex;
+         flex-direction: row;
+         justify-content: space-between;
      }
     </style>
   </head>
@@ -42,6 +45,12 @@
     <canvas class="arrow"></canvas>
     <div class="tmux">
         <div class="select-mode">navigation</div>
+        <div class="arrows">
+            <span>arrows</span>
+            <span class="arrow-counter">0</span>
+            <span>/</span>
+            <span class="arrow-max"></span>
+        </div>
     </div>
     <script src="./dist/main.js" charset="utf-8"></script>
   </body>

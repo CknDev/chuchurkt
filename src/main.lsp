@@ -8,6 +8,8 @@
 (var round (function (value)
                      (parseInt value 10)))
 
+;; false as fn
+(var f (function () false))
 
 ;; array : array to list
 (var list (function (...args) (array ...args)))
@@ -96,8 +98,23 @@
                            (= currentDirection direction.LEFT)
                             (list (- x xPadd) y))))
 
+
+;; user arrow counter 
+(var MAX_ARROW 4)
+(var hasMaxArrow (function (arrows) (if (= arrows MAX_ARROW) true false)))
+(var arrowCounterAdd (function (currentCounter) (+ currentCounter 1)))
+(var arrowCounterSub (function (currentCounter) (- currentCounter 1)))
+
+;; append arrow counter to dom
+(var domArrowCounter (function (arrowCounter)
+                               (var el($ ".arrow-counter"))
+                               (set el.innerHTML arrowCounter)))
+(var domArrowMax (function (max)
+                           (var el($ ".arrow-max"))
+                           (set el.innerHTML max)))
+
 ;; put an direction in arrow mode
-(var arrowSelect (function (currentDirection image sizeBlock selectedBlock ctx)
+(var arrowSelect (function (currentDirection image sizeBlock selectedBlock arrowCounter ctx)
                            ;; arrow tileSet
                            (var arrowTileSet (object UP    (list 0 0 50 50)
                                                      RIGHT (list 50 0 50 50)
@@ -112,12 +129,14 @@
                            ;; right arrow
                            (ctx.drawImage image
                                           sx sy sw sh
-                                          x y dw dh)))
+                                          x y dw dh)
+                           (arrowCounterAdd arrowCounter)))
 
 ;; append select mode to dom
 (var domSelectMode (function(currentMode)
                             (var el($ ".select-mode"))
                             (set el.innerHTML currentMode)))
+
 
 ;; toggle mode
 (var toggleMode (function (currentMode)
@@ -189,6 +208,7 @@
 
 (listen "keyup" (function (e)
                           (e.preventDefault)
+                          (domArrowCounter arrowCounter)
                           (cond (= e.keyCode keyboard.SPACE)
                                 (set selectMode (toggleMode selectMode)))
                           (cond (= selectMode "navigation")
@@ -217,33 +237,46 @@
                                                          block_size
                                                          block_selected))))))
                           (cond (= selectMode "arrow")
-                                ((cond (= e.keyCode keyboard.UP)
-                                        (arrowSelect "UP" spriteSheet
-                                                     block_size
-                                                     block_selected
-                                                     arrow)
-                                       (= e.keyCode keyboard.RIGHT)
-                                        (arrowSelect "RIGHT" spriteSheet
-                                                     block_size
-                                                     block_selected
-                                                     arrow)
-                                       (= e.keyCode keyboard.DOWN)
-                                        (arrowSelect "DOWN" spriteSheet
-                                                     block_size
-                                                     block_selected
-                                                     arrow)
-                                       (= e.keyCode keyboard.LEFT)
-                                        (arrowSelect "LEFT" spriteSheet
-                                                     block_size
-                                                     block_selected
-                                                     arrow))))
+                                (if (true? (hasMaxArrow arrowCounter))
+                                    (f)
+                                  ((cond (= e.keyCode keyboard.UP)
+                                         (set arrowCounter 
+                                              (arrowSelect "UP" spriteSheet
+                                                           block_size
+                                                           block_selected
+                                                           arrowCounter
+                                                           arrow))
+                                         (= e.keyCode keyboard.RIGHT)
+                                         (set arrowCounter
+                                              (arrowSelect "RIGHT" spriteSheet
+                                                           block_size
+                                                           block_selected
+                                                           arrowCounter
+                                                           arrow))
+                                         (= e.keyCode keyboard.DOWN)
+                                         (set arrowCounter
+                                              (arrowSelect "DOWN" spriteSheet
+                                                           block_size
+                                                           block_selected
+                                                           arrowCounter
+                                                           arrow))
+                                         (= e.keyCode keyboard.LEFT)
+                                         (set arrowCounter
+                                              (arrowSelect "LEFT" spriteSheet
+                                                           block_size
+                                                           block_selected
+                                                           arrowCounter
+                                                           arrow))))))
                           false))
+                                
 
 (var x 0)
+(var arrowCounter 0)
+(domArrowCounter arrowCounter)
+(domArrowMax MAX_ARROW)
 (var update (function () (setInterval
              (function()
                       (clearMainCanvas)
-                      (set x (+ x 15)) ;; vel.x
                       (if (= x 800) (clearInterval update))
                       (rect (list x 0) block_size main)
                       (select block_selected block_size selection)

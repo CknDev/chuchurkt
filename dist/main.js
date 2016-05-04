@@ -8,6 +8,9 @@ var warn = function(value) {
 var round = function(value) {
     return parseInt(value,10);
 };
+var f = function() {
+    return false;
+};
 var list = function(...args) {
     return [
         ...args
@@ -92,8 +95,27 @@ var moveSelect = function(currentDirection,padd,selectionBlock) {
                     list((x - xPadd),y) :
                     undefined))));
 };
-var arrowSelect = function(currentDirection,image,sizeBlock,selectedBlock,ctx) {
-    display(currentDirection);
+var MAX_ARROW = 4;
+var hasMaxArrow = function(arrows) {
+    return ((arrows === MAX_ARROW) ?
+        true :
+        false);
+};
+var arrowCounterAdd = function(currentCounter) {
+    return (currentCounter + 1);
+};
+var arrowCounterSub = function(currentCounter) {
+    return (currentCounter - 1);
+};
+var domArrowCounter = function(arrowCounter) {
+    var el = $(".arrow-counter");
+    el.innerHTML = arrowCounter;
+};
+var domArrowMax = function(max) {
+    var el = $(".arrow-max");
+    el.innerHTML = max;
+};
+var arrowSelect = function(currentDirection,image,sizeBlock,selectedBlock,arrowCounter,ctx) {
     var arrowTileSet = {
         UP: list(0,0,50,50),
         RIGHT: list(50,0,50,50),
@@ -105,7 +127,8 @@ var arrowSelect = function(currentDirection,image,sizeBlock,selectedBlock,ctx) {
     [sx, sy, sw, sh] = arrowTileSet[currentDirection];
     [dw, dh] = sizeBlock;
     ctx.clearRect(x,y,dw,dh);
-    return ctx.drawImage(image,sx,sy,sw,sh,x,y,dw,dh);
+    ctx.drawImage(image,sx,sy,sw,sh,x,y,dw,dh);
+    return arrowCounterAdd(arrowCounter);
 };
 var domSelectMode = function(currentMode) {
     var el = $(".select-mode");
@@ -178,6 +201,7 @@ tilify(0,0,WIN_WIDTH,WIN_HEIGHT,car(TILE_SIZE),car(cdr(TILE_SIZE)),ground);
 var block_selected = list(0,0);
 listen("keyup",function(e) {
     e.preventDefault();
+    domArrowCounter(arrowCounter);
     ((e.keyCode === keyboard.SPACE) ?
         selectMode = toggleMode(selectMode) :
         undefined);
@@ -193,23 +217,27 @@ listen("keyup",function(e) {
             undefined)) :
         undefined);
     ((selectMode === "arrow") ?
-        ((e.keyCode === keyboard.UP) ?
-            arrowSelect("UP",spriteSheet,block_size,block_selected,arrow) :
-            ((e.keyCode === keyboard.RIGHT) ?
-                arrowSelect("RIGHT",spriteSheet,block_size,block_selected,arrow) :
-                ((e.keyCode === keyboard.DOWN) ?
-                    arrowSelect("DOWN",spriteSheet,block_size,block_selected,arrow) :
-                    ((e.keyCode === keyboard.LEFT) ?
-                        arrowSelect("LEFT",spriteSheet,block_size,block_selected,arrow) :
-                        undefined))))() :
+        ((true === hasMaxArrow(arrowCounter)) ?
+            f() :
+            ((e.keyCode === keyboard.UP) ?
+                arrowCounter = arrowSelect("UP",spriteSheet,block_size,block_selected,arrowCounter,arrow) :
+                ((e.keyCode === keyboard.RIGHT) ?
+                    arrowCounter = arrowSelect("RIGHT",spriteSheet,block_size,block_selected,arrowCounter,arrow) :
+                    ((e.keyCode === keyboard.DOWN) ?
+                        arrowCounter = arrowSelect("DOWN",spriteSheet,block_size,block_selected,arrowCounter,arrow) :
+                        ((e.keyCode === keyboard.LEFT) ?
+                            arrowCounter = arrowSelect("LEFT",spriteSheet,block_size,block_selected,arrowCounter,arrow) :
+                            undefined))))()) :
         undefined);
     return false;
 });
 var x = 0;
+var arrowCounter = 0;
+domArrowCounter(arrowCounter);
+domArrowMax(MAX_ARROW);
 var update = function() {
     return setInterval(function() {
         clearMainCanvas();
-        x = (x + 15);
         ((x === 800) ?
             clearInterval(update) :
             undefined);
