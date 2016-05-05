@@ -5,27 +5,54 @@ var display = function(value) {
 var warn = function(value) {
     return console.warn(value);
 };
+var newline = function() {
+    return console.log("");
+};
 var round = function(value) {
     return parseInt(value,10);
 };
+var flip = function(fn) {
+    return function(a,b) {
+        return fn(b,a);
+    };
+};
 var f = function() {
     return false;
+};
+var t = function() {
+    return true;
 };
 var list = function(...args) {
     return [
         ...args
     ];
 };
+var cons = function(element,l) {
+    l.push(element);
+    return l;
+};
+var concat = function(a,b,acc) {
+    (a).forEach(function(element) {
+        return acc.push(element);
+    });
+    (b).forEach(function(element) {
+        return acc.push(element);
+    });
+    return acc;
+};
+var reverse = function(list) {
+    return list.reverse();
+};
 var car = function(list) {
     return list[0];
+};
+var cdr = function(list) {
+    return list.slice(1);
 };
 var listen = function(name,fn) {
     return document.addEventListener(name,function(e) {
         return fn(e);
     });
-};
-var cdr = function(list) {
-    return list.slice(1);
 };
 var $ = function(element) {
     return document.querySelector(element);
@@ -145,6 +172,35 @@ var toggleMode = function(currentMode) {
             car(modes) :
             undefined));
 };
+var hasPlayerArrow = function(currentArrow,arrowList) {
+    return ((0 === arrowList.length) ?
+        f() :
+        ((currentArrow === car(arrowList)) ?
+            t() :
+            hasPlayerArrow(currentArrow,cdr(arrowList))));
+};
+var removeArrow = function(currentArrow,arrowList,acc,found) {
+    return ((true === found) ?
+        acc :
+        ((car(arrowList) === currentArrow) ?
+            removeArrow(currentArrow,arrowList,concat(acc,cdr(arrowList),[]),true) :
+            ((typeof(car(arrowList)) === "undefined") ?
+                removeArrow(currentArrow,arrowList,acc,true) :
+                removeArrow(currentArrow,cdr(arrowList),cons(car(arrowList),acc),false))));
+};
+var addArrow = function(currentArrow,arrowList,acc) {
+    ((typeof(acc) === "undefined") ?
+        acc = [] :
+        undefined);
+    return ((car(arrowList) === "") ?
+        concat(acc,concat(list(currentArrow),cdr(arrowList),[]),[]) :
+        ((typeof(car(arrowList)) === "undefined") ?
+            concat(list(currentArrow),cdr(reverse(acc)),[]) :
+            addArrow(currentArrow,cdr(arrowList),concat(list(car(arrowList)),acc,[]))));
+};
+var transferArrow = function() {
+    return f();
+};
 var fill = function(iteration,list) {
     return list.fill(iteration);
 };
@@ -233,6 +289,9 @@ listen("keyup",function(e) {
 });
 var x = 0;
 var arrowCounter = 0;
+var levelArrowList = list("UP","DOWN","LEFT","LEFT");
+var inventoryArrowList = levelArrowList;
+var boardArrowList = list("","","","");
 domArrowCounter(arrowCounter);
 domArrowMax(MAX_ARROW);
 var update = function() {

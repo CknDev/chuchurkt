@@ -4,25 +4,49 @@
 ;; console.warn to wanr
 (var warn (function (value) (console.warn value)))
 
+;; newline
+(var newline (function () (console.log "")))
+
 ;; round a position
 (var round (function (value)
                      (parseInt value 10)))
 
-;; false as fn
+;; flip a fn
+(var flip (function (fn) (function (a b) (fn b a))))
+
+
+;; always false 
 (var f (function () false))
 
-;; array : array to list
+;; always true
+(var t (function () true))
+
+;; list : array to list
 (var list (function (...args) (array ...args)))
+
+;; cons : push an element to a list
+(var cons (function (element l)
+                    (l.push element)
+                    l))
+
+;; concat : concat 2 lists in one 
+(var concat (function (a b acc)
+                      (each a (function (element) (acc.push element)))
+                      (each b (function (element) (acc.push element)))
+                      acc))
+
+;; reverse: reverse a list
+(var reverse (function (list) (list.reverse)))
 
 ;; head
 (var car (function (list) list[0]))
 
+;; tail
+(var cdr (function (list) (list.slice 1)))
+
 ;; listen to event
 (var listen (function (name fn)
                       (document.addEventListener name (function (e) (fn e)))))
-
-;; tail
-(var cdr (function (list) (list.slice 1)))
 
 ;; jquery.$
 (var $ (function (element) (document.querySelector element)))
@@ -113,8 +137,13 @@
                            (var el($ ".arrow-max"))
                            (set el.innerHTML max)))
 
-;; put an direction in arrow mode
-(var arrowSelect (function (currentDirection image sizeBlock selectedBlock arrowCounter ctx)
+;; put a direction in arrow mode
+(var arrowSelect (function (currentDirection
+                            image
+                            sizeBlock
+                            selectedBlock
+                            arrowCounter
+                            ctx)
                            ;; arrow tileSet
                            (var arrowTileSet (object UP    (list 0 0 50 50)
                                                      RIGHT (list 50 0 50 50)
@@ -137,7 +166,6 @@
                             (var el($ ".select-mode"))
                             (set el.innerHTML currentMode)))
 
-
 ;; toggle mode
 (var toggleMode (function (currentMode)
                           (var modes (list "navigation" "arrow"))
@@ -147,6 +175,50 @@
                           (cond
                            (= currentMode (car modes)) (car (cdr modes)) 
                            (= currentMode (car (cdr modes))) (car modes))))
+
+;; check if arrow is in the playerArrowStack
+(var hasPlayerArrow (function (currentArrow arrowList)
+                              (if (= 0 arrowList.length) (f)
+                                (if (= currentArrow (car arrowList)) (t)
+                                  (hasPlayerArrow
+                                   currentArrow
+                                   (cdr arrowList))))))
+
+;; remove arrow from an arrow list
+(var removeArrow (function (currentArrow arrowList acc found)
+                           (if (true? found) acc
+                             (if (= (car arrowList) currentArrow)
+                                 (removeArrow currentArrow
+                                              arrowList
+                                              (concat acc (cdr arrowList) [])
+                                              true)
+                               (if (undefined? (car arrowList))
+                                  (removeArrow currentArrow arrowList acc true)
+                                 (removeArrow currentArrow
+                                              (cdr arrowList)
+                                              (cons (car arrowList) acc)
+                                              false))))))
+
+;; add arrow to an arrow list
+;; find where the empty ("") slot is and replace by current Arrow
+;; if all slots of the list are took add it to begining of the list
+(var addArrow (function (currentArrow arrowList acc)
+                        (cond (undefined? acc) (set acc []))
+                        (if (= (car arrowList) "")
+                            (concat acc
+                                    (concat (list currentArrow) (cdr arrowList) [])
+                                    [])
+                          (if (undefined? (car arrowList))
+                              (concat (list currentArrow) (cdr (reverse acc)) [])
+                            (addArrow currentArrow
+                                      (cdr arrowList)
+                                      (concat (list (car arrowList)) acc []))))))
+
+;; TODO:
+;; transferArrow: put an arrow from a list to another
+;; toBoardArrow: pick an arrow from the inventory and put it in the board
+;; toInventoryArrow : (reverse toBoardArrow)
+(var transferArrow (function () (f)))
 
 ;; Array.prototype.fill
 (var fill (function (iteration list) (list.fill iteration)))
@@ -169,6 +241,7 @@
 
 ;; select mode navigation <-> arrow
 (var selectMode "navigation")
+
 (domSelectMode selectMode)
 
 (var tileInit (function()
@@ -268,10 +341,26 @@
                                                            arrowCounter
                                                            arrow))))))
                           false))
-                                
 
 (var x 0)
 (var arrowCounter 0)
+
+;; available arrows for current stage
+;; immutable
+(var levelArrowList (list "UP" "DOWN" "LEFT" "LEFT"))
+
+;; stack of arrows available for the player
+;; mutable
+;; init to the levelArrowList
+;; must match the levelArrowList length
+(var inventoryArrowList levelArrowList)
+
+;; stack of arrows putted on the board
+;; mutable
+;; init to list of empty items
+;; must match levelArrowList length
+(var boardArrowList (list "" "" "" ""))
+
 (domArrowCounter arrowCounter)
 (domArrowMax MAX_ARROW)
 (var update (function () (setInterval
