@@ -172,12 +172,12 @@ var toggleMode = function(currentMode) {
             car(modes) :
             undefined));
 };
-var hasPlayerArrow = function(currentArrow,arrowList) {
-    return ((0 === arrowList.length) ?
+var hasArrow = function(currentArrow,arrowList) {
+    return ((typeof(car(arrowList)) === "undefined") ?
         f() :
         ((currentArrow === car(arrowList)) ?
             t() :
-            hasPlayerArrow(currentArrow,cdr(arrowList))));
+            hasArrow(currentArrow,cdr(arrowList))));
 };
 var removeArrow = function(currentArrow,arrowList,acc,found) {
     return ((true === found) ?
@@ -198,8 +198,35 @@ var addArrow = function(currentArrow,arrowList,acc) {
             concat(list(currentArrow),cdr(reverse(acc)),[]) :
             addArrow(currentArrow,cdr(arrowList),concat(list(car(arrowList)),acc,[]))));
 };
-var transferArrow = function() {
-    return f();
+var transferArrow = function(arrow,origin,dest) {
+    removeArrow(arrow,origin,[],false);
+    return addArrow(arrow,dest,[]);
+};
+var isEmptyInventory = function(inventory) {
+    var ln = inventory.length;
+    var index = 0;
+    (inventory).forEach(function(item) {
+        return ((item === "") ?
+            index = (index + 1) :
+            undefined);
+    });
+    return ((index === ln) ?
+        t() :
+        f());
+};
+var isEmptyBoard = function(board) {
+    return (board.length === 0);
+};
+var toBoardArrow = function(arrow,inventory,board) {
+    display(hasArrow(arrow,inventory));
+    return (((true === isEmptyInventory(inventory)) || (false === hasArrow(arrow,inventory))) ?
+        board :
+        transferArrow(arrow,inventory,board));
+};
+var toInventoryArrow = function(arrow,inventory,board) {
+    return ((true === isEmptyInventory(inventory)) ?
+        f() :
+        transferArrow(arrow,board,inventory));
 };
 var fill = function(iteration,list) {
     return list.fill(iteration);

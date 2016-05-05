@@ -176,13 +176,12 @@
                            (= currentMode (car modes)) (car (cdr modes)) 
                            (= currentMode (car (cdr modes))) (car modes))))
 
-;; check if arrow is in the playerArrowStack
-(var hasPlayerArrow (function (currentArrow arrowList)
-                              (if (= 0 arrowList.length) (f)
-                                (if (= currentArrow (car arrowList)) (t)
-                                  (hasPlayerArrow
-                                   currentArrow
-                                   (cdr arrowList))))))
+;; check if arrow is in the inventory
+(var hasArrow (function (currentArrow arrowList)
+                              (if (undefined? (car arrowList)) (f)
+                                (if (= currentArrow (car arrowList))
+                                    (t)
+                                  (hasArrow currentArrow (cdr arrowList))))))
 
 ;; remove arrow from an arrow list
 (var removeArrow (function (currentArrow arrowList acc found)
@@ -214,18 +213,45 @@
                                       (cdr arrowList)
                                       (concat (list (car arrowList)) acc []))))))
 
-;; TODO:
 ;; transferArrow: put an arrow from a list to another
+(var transferArrow (function (arrow origin dest)
+                             (removeArrow arrow origin [] false)
+                             (addArrow arrow dest [])))
+
+
+;; isEmptyInventory: check if board is empty
+(var isEmptyInventory (function (inventory)
+                            (var ln inventory.length)
+                            (var index 0)
+                            (each inventory
+                                  (function (item)
+                                            (if (= item "")
+                                                (set index (+ index 1)))))
+                            (if (= index ln) (t) (f))))
+
+;; isEmptyBoard : check if inventory is empty
+(var isEmptyBoard (function (board) (= board.length 0)))
+
 ;; toBoardArrow: pick an arrow from the inventory and put it in the board
+;; return the board if (no arrow left in inventory) or (arrow not in inventory)
+(var toBoardArrow (function (arrow inventory board)
+                            (display (hasArrow arrow inventory))
+                            (if (|| (true? (isEmptyInventory inventory))
+                                 (false? (hasArrow arrow inventory)))
+                                board
+                              (transferArrow arrow inventory board))))
+
 ;; toInventoryArrow : (reverse toBoardArrow)
-(var transferArrow (function () (f)))
+(var toInventoryArrow (function (arrow inventory board)
+                                (if (true? (isEmptyInventory inventory))
+                                    (f)
+                                  (transferArrow arrow board inventory))))
 
 ;; Array.prototype.fill
 (var fill (function (iteration list) (list.fill iteration)))
 
 ;; Array.prototype.length
 (var length (function (list) list.length))
-
 
 ;; keyboard events
 (var keyboard (object UP 38
