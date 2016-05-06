@@ -74,6 +74,11 @@ var write = function(text,position,ctx) {
     var y = (car(cdr(position)) + padd);
     return ctx.fillText(text,x,y);
 };
+var drawSprite = function(source,destination,image,ctx) {
+    [sx, sy, sw, sh] = source;
+    [dx, dy, dw, dh] = destination;
+    return ctx.drawImage(image,sx,sy,sw,sh,dx,dy,dw,dh);
+};
 var rect = function(position,size,ctx) {
     ctx.beginPath();
     return ctx.rect(car(position),car(cdr(position)),car(size),car(cdr(size)));
@@ -142,20 +147,39 @@ var domArrowMax = function(max) {
     var el = $(".arrow-max");
     el.innerHTML = max;
 };
-var arrowSelect = function(currentDirection,image,sizeBlock,selectedBlock,arrowCounter,ctx) {
+var renderInventory = function(arrowList,image,ctx) {
     var arrowTileSet = {
         UP: list(0,0,50,50),
         RIGHT: list(50,0,50,50),
         DOWN: list(100,0,50,50),
         LEFT: list(150,0,50,50)
     };
-    var x = car(selectedBlock);
-    var y = car(cdr(selectedBlock));
-    [sx, sy, sw, sh] = arrowTileSet[currentDirection];
-    [dw, dh] = sizeBlock;
-    ctx.clearRect(x,y,dw,dh);
-    ctx.drawImage(image,sx,sy,sw,sh,x,y,dw,dh);
-    return arrowCounterAdd(arrowCounter);
+    var slotsPosition = list(list(0,0,50,50),list(70,0,50,50),list(140,0,50,50),list(210,0,50,50));
+    clearInventoryCanvas();
+    return (arrowList).forEach(function(arrow,index) {
+        return drawSprite(arrowTileSet[arrow],slotsPosition[index],image,ctx);
+    });
+};
+var arrowSelect = function(currentDirection,image,sizeBlock,selectedBlock,inventory,board,inventoryCtx,ctx) {
+    return ((false === hasArrow(currentDirection,inventory)) ?
+        list(inventory,board) :
+        (function() {
+            var arrowTileSet = {
+                UP: list(0,0,50,50),
+                RIGHT: list(50,0,50,50),
+                DOWN: list(100,0,50,50),
+                LEFT: list(150,0,50,50)
+            };
+            var x = car(selectedBlock);
+            var y = car(cdr(selectedBlock));
+            [dw, dh] = sizeBlock;
+            transfer = toBoardArrow(currentDirection,inventory,board);
+            [inventory, board] = transfer;
+            ctx.clearRect(x,y,dw,dh);
+            drawSprite(arrowTileSet[currentDirection],list(x,y,dw,dh),image,ctx);
+            renderInventory(inventory,image,inventoryCtx);
+            return list(inventory,board,countBoard(board,0));
+        })());
 };
 var domSelectMode = function(currentMode) {
     var el = $(".select-mode");
@@ -179,6 +203,13 @@ var hasArrow = function(currentArrow,arrowList) {
             t() :
             hasArrow(currentArrow,cdr(arrowList))));
 };
+var countBoard = function(arrowList,acc) {
+    return ((typeof(car(arrowList)) === "undefined") ?
+        acc :
+        ((car(arrowList) !== "") ?
+            countBoard(cdr(arrowList),(acc + 1)) :
+            countBoard(cdr(arrowList),acc)));
+};
 var removeArrow = function(currentArrow,arrowList,acc,found) {
     return ((true === found) ?
         acc :
@@ -188,6 +219,18 @@ var removeArrow = function(currentArrow,arrowList,acc,found) {
                 removeArrow(currentArrow,arrowList,acc,true) :
                 removeArrow(currentArrow,cdr(arrowList),cons(car(arrowList),acc),false))));
 };
+var removeArrowPosition = function(currentPosition,arrowList,acc,found) {
+    [x, y] = car(arrowList);
+    return ((true === found) ?
+        acc :
+        (((x === car(currentPosition)) && (y === car(cdr(currentPosition)))) ?
+            removeArrowPosition(currentPosition,arrowList,concat(acc,cdr(arrowList),[]),true) :
+            ((typeof(car(arrowList)) === "undefined") ?
+                removeArrowPosition(currentPosition,arrowList,acc,true) :
+                removeArrowPosition(currentPosition,cdr(arrowList),cons(car(arrowList),acc),false))));
+};
+display(removeArrowPosition(list(100,100),list(list(100,100)),[],false));
+display(removeArrowPosition(list(100,100),list(list(100,100),list(200,100),list(50,50)),[],false));
 var addArrow = function(currentArrow,arrowList,acc) {
     ((typeof(acc) === "undefined") ?
         acc = [] :
@@ -198,9 +241,22 @@ var addArrow = function(currentArrow,arrowList,acc) {
             concat(list(currentArrow),cdr(reverse(acc)),[]) :
             addArrow(currentArrow,cdr(arrowList),concat(list(car(arrowList)),acc,[]))));
 };
+var addArrowPosition = function(currentPosition,arrowList,acc) {
+    ((typeof(acc) === "undefined") ?
+        acc = [] :
+        undefined);
+    var defaultPosition = list(-100,-100);
+    [x, y] = car(arrowList);
+    return (((x === car(defaultPosition)) && (y === car(cdr(defaultPosition)))) ?
+        concat(acc,concat(list(currentPosition),cdr(arrowList),[]),[]) :
+        ((typeof(car(arrowList)) === "undefined") ?
+            concat(currentPosition,cdr(reverse(acc)),[]) :
+            addArrowPosition(currentPosition,cdr(arrowList),concat(list(car(arrowList)),acc,[]))));
+};
 var transferArrow = function(arrow,origin,dest) {
-    removeArrow(arrow,origin,[],false);
-    return addArrow(arrow,dest,[]);
+    var from = removeArrow(arrow,origin,[],false);
+    var to = addArrow(arrow,dest,[]);
+    return list(from,to);
 };
 var isEmptyInventory = function(inventory) {
     var ln = inventory.length;
@@ -218,7 +274,6 @@ var isEmptyBoard = function(board) {
     return (board.length === 0);
 };
 var toBoardArrow = function(arrow,inventory,board) {
-    display(hasArrow(arrow,inventory));
     return (((true === isEmptyInventory(inventory)) || (false === hasArrow(arrow,inventory))) ?
         board :
         transferArrow(arrow,inventory,board));
@@ -264,21 +319,27 @@ var CANVAS_MAIN = $("canvas.main");
 var CANVAS_GROUND = $("canvas.ground");
 var CANVAS_SELECTION = $("canvas.selection");
 var CANVAS_ARROW = $("canvas.arrow");
+var CANVAS_INVENTORY = $("canvas.inventory");
 var block_size = TILE_SIZE;
 var main = ctx(CANVAS_MAIN);
 var ground = ctx(CANVAS_GROUND);
 var selection = ctx(CANVAS_SELECTION);
 var arrow = ctx(CANVAS_ARROW);
+var inventory = ctx(CANVAS_INVENTORY);
 main.scale(1.0,1.0);
 ground.scale(1.0,1.0);
 selection.scale(1.0,1.0);
 arrow.scale(1.0,1.0);
+inventory.scale(1.0,1.0);
 var spriteSheet = tileInit();
 var clearMainCanvas = function() {
     return clr(CANVAS_MAIN.width,CANVAS_MAIN.height,main);
 };
 var clearSelectionCanvas = function() {
     return clr(CANVAS_SELECTION.width,CANVAS_SELECTION.height,selection);
+};
+var clearInventoryCanvas = function() {
+    return clr(CANVAS_INVENTORY.width,CANVAS_INVENTORY.height,inventory);
 };
 tilify(0,0,WIN_WIDTH,WIN_HEIGHT,car(TILE_SIZE),car(cdr(TILE_SIZE)),ground);
 var block_selected = list(0,0);
@@ -303,13 +364,21 @@ listen("keyup",function(e) {
         ((true === hasMaxArrow(arrowCounter)) ?
             f() :
             ((e.keyCode === keyboard.UP) ?
-                arrowCounter = arrowSelect("UP",spriteSheet,block_size,block_selected,arrowCounter,arrow) :
+                [inventoryArrowList,
+                                              boardArrowList,
+                                              arrowCounter] = arrowSelect("UP",spriteSheet,block_size,block_selected,inventoryArrowList,boardArrowList,inventory,arrow) :
                 ((e.keyCode === keyboard.RIGHT) ?
-                    arrowCounter = arrowSelect("RIGHT",spriteSheet,block_size,block_selected,arrowCounter,arrow) :
+                    [inventoryArrowList,
+                                              boardArrowList,
+                                              arrowCounter] = arrowSelect("RIGHT",spriteSheet,block_size,block_selected,inventoryArrowList,boardArrowList,inventory,arrow) :
                     ((e.keyCode === keyboard.DOWN) ?
-                        arrowCounter = arrowSelect("DOWN",spriteSheet,block_size,block_selected,arrowCounter,arrow) :
+                        [inventoryArrowList,
+                                              boardArrowList,
+                                              arrowCounter] = arrowSelect("DOWN",spriteSheet,block_size,block_selected,inventoryArrowList,boardArrowList,inventory,arrow) :
                         ((e.keyCode === keyboard.LEFT) ?
-                            arrowCounter = arrowSelect("LEFT",spriteSheet,block_size,block_selected,arrowCounter,arrow) :
+                            [inventoryArrowList,
+                                              boardArrowList,
+                                              arrowCounter] = arrowSelect("LEFT",spriteSheet,block_size,block_selected,inventoryArrowList,boardArrowList,inventory,arrow) :
                             undefined))))()) :
         undefined);
     return false;
@@ -319,6 +388,7 @@ var arrowCounter = 0;
 var levelArrowList = list("UP","DOWN","LEFT","LEFT");
 var inventoryArrowList = levelArrowList;
 var boardArrowList = list("","","","");
+var boardArrowPosition = list(list(-100,-100),list(-100,-100),list(-100,-100),list(-100,-100));
 domArrowCounter(arrowCounter);
 domArrowMax(MAX_ARROW);
 var update = function() {
@@ -333,5 +403,6 @@ var update = function() {
     },100);
 };
 spriteSheet.onload = function() {
+    renderInventory(inventoryArrowList,spriteSheet,inventory);
     return update();
 };

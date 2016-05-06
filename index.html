@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <title>lisp game jam</title>
     <style>
-     canvas {
+     .game {
          position: absolute;
          top: 0;
          left: 0;
@@ -24,6 +24,11 @@
      .arrow {
          z-index: 3;
      }
+     .inventory {
+         position: absolute;
+         top: 600px;
+         left: 50px;
+     }
      .tmux {
          position: absolute;
          bottom: 0;
@@ -39,10 +44,11 @@
     </style>
   </head>
   <body>
-    <canvas class="ground"></canvas>
-    <canvas class="main"></canvas>
-    <canvas class="selection"></canvas>
-    <canvas class="arrow"></canvas>
+    <canvas class="game ground"></canvas>
+    <canvas class="game main"></canvas>
+    <canvas class="game selection"></canvas>
+    <canvas class="game arrow"></canvas>
+    <canvas class="inventory"></canvas>
     <div class="tmux">
         <div class="select-mode">navigation</div>
         <div class="arrows">

@@ -70,6 +70,14 @@
                      (var y (+ (car (cdr position)) padd))
                      (ctx.fillText text x y)))
 
+;; draw a sprite
+(var drawSprite (function (source destination image ctx)
+                      (set [sx, sy, sw, sh] source)
+                      (set [dx, dy, dw, dh] destination)
+                      (ctx.drawImage image
+                                     sx sy sw sh
+                                     dx dy dw dh)))
+
 ;; draw a rectangle
 (var rect (function (position size ctx)
                     (ctx.beginPath)
@@ -137,29 +145,67 @@
                            (var el($ ".arrow-max"))
                            (set el.innerHTML max)))
 
+;; render inventory in a separate canvas from the game' ones
+(var renderInventory (function (arrowList image ctx)
+                               (var arrowTileSet
+                                    (object UP    (list 0 0 50 50)
+                                            RIGHT (list 50 0 50 50)
+                                            DOWN  (list 100 0 50 50)
+                                            LEFT  (list 150 0 50 50)))
+                               (var slotsPosition
+                                    (list (list 0 0 50 50)
+                                          (list 70 0 50 50)
+                                          (list 140 0 50 50)
+                                          (list 210 0 50 50)))
+                               (clearInventoryCanvas)
+                               (each arrowList
+                                     (function (arrow index)
+                                               (drawSprite arrowTileSet[arrow]
+                                                           slotsPosition[index]
+                                                           image
+                                                           ctx)))))
+
 ;; put a direction in arrow mode
 (var arrowSelect (function (currentDirection
                             image
                             sizeBlock
                             selectedBlock
-                            arrowCounter
+                            inventory
+                            board
+                            inventoryCtx
                             ctx)
                            ;; arrow tileSet
-                           (var arrowTileSet (object UP    (list 0 0 50 50)
-                                                     RIGHT (list 50 0 50 50)
-                                                     DOWN  (list 100 0 50 50)
-                                                     LEFT  (list 150 0 50 50)))
-                           (var x (car selectedBlock))
-                           (var y (car (cdr selectedBlock)))
-                           (set [sx, sy, sw, sh] arrowTileSet[currentDirection])
-                           (set [dw, dh] sizeBlock)
-                           ;; clear block where the arrow will be put
-                           (ctx.clearRect x y dw dh)
-                           ;; right arrow
-                           (ctx.drawImage image
-                                          sx sy sw sh
-                                          x y dw dh)
-                           (arrowCounterAdd arrowCounter)))
+                           (if (false? (hasArrow currentDirection inventory))
+                              (list inventory board)
+                           ((function ()
+                                     (var arrowTileSet (object UP (list 0 0 50 50)
+                                                               RIGHT (list 50 0 50 50)
+                                                               DOWN (list 100 0 50 50)
+                                                               LEFT (list 150 0 50 50)))
+                                      (var x (car selectedBlock))
+                                      (var y (car (cdr selectedBlock)))
+                                      (set [dw, dh] sizeBlock)
+
+                                      ;; transfer arrow from inventory to board
+                                      (set transfer (toBoardArrow currentDirection
+                                                                  inventory
+                                                                  board))
+                                      (set [inventory, board] transfer)
+
+                                      ;; clear block where the arrow will be put
+                                      (ctx.clearRect x y dw dh)
+
+                                      ;; render arrow
+                                      (drawSprite arrowTileSet[currentDirection] 
+                                                  (list x y dw dh)
+                                                  image
+                                                  ctx)
+                                      (renderInventory inventory
+                                                       image
+                                                       inventoryCtx)
+                                      (list inventory
+                                            board
+                                            (countBoard board 0)))))))
 
 ;; append select mode to dom
 (var domSelectMode (function(currentMode)
@@ -183,6 +229,14 @@
                                     (t)
                                   (hasArrow currentArrow (cdr arrowList))))))
 
+;; count board arrows took
+(var countBoard (function (arrowList acc)
+                          (if (undefined? (car arrowList))
+                              acc
+                            (if (!= (car arrowList) "")
+                                (countBoard (cdr arrowList) (+ acc 1))
+                              (countBoard (cdr arrowList) acc)))))
+
 ;; remove arrow from an arrow list
 (var removeArrow (function (currentArrow arrowList acc found)
                            (if (true? found) acc
@@ -197,6 +251,30 @@
                                               (cdr arrowList)
                                               (cons (car arrowList) acc)
                                               false))))))
+
+(var removeArrowPosition (function (currentPosition arrowList acc found) 
+                                   (set [x, y] (car arrowList))
+                                   (if (true? found)
+                                       acc
+                                     (if (&& (= x (car currentPosition))
+                                             (= y (car (cdr currentPosition))))
+                                         (removeArrowPosition currentPosition
+                                                              arrowList
+                                                              (concat acc
+                                                                      (cdr arrowList)
+                                                                      [])
+                                                              true)
+                                       (if (undefined? (car arrowList))
+                                           (removeArrowPosition currentPosition
+                                                                arrowList
+                                                                acc true)
+                                         (removeArrowPosition currentPosition
+                                                              (cdr arrowList)
+                                                              (cons (car arrowList) acc)
+                                                              false)
+                                           )
+                                         )
+                                     )))
 
 ;; add arrow to an arrow list
 ;; find where the empty ("") slot is and replace by current Arrow
@@ -213,10 +291,26 @@
                                       (cdr arrowList)
                                       (concat (list (car arrowList)) acc []))))))
 
+;; add arrow position
+(var addArrowPosition (function (currentPosition arrowList acc)
+                                (cond (undefined? acc) (set acc []))
+                                (var defaultPosition (list -100 -100))
+                                (set [x, y] (car arrowList))
+                                (if (&& (= x (car defaultPosition))
+                                        (= y (car (cdr defaultPosition))))
+                                    (concat acc
+                                            (concat (list currentPosition) (cdr arrowList) [])
+                                            [])
+                                  (if (undefined? (car arrowList))
+                                      (concat currentPosition (cdr (reverse acc)) [])
+                                    (addArrowPosition currentPosition (cdr arrowList)
+                                              (concat (list (car arrowList)) acc []))))))
+
 ;; transferArrow: put an arrow from a list to another
 (var transferArrow (function (arrow origin dest)
-                             (removeArrow arrow origin [] false)
-                             (addArrow arrow dest [])))
+                             (var from (removeArrow arrow origin [] false))
+                             (var to (addArrow arrow dest []))
+                             (list from to)))
 
 
 ;; isEmptyInventory: check if board is empty
@@ -235,7 +329,6 @@
 ;; toBoardArrow: pick an arrow from the inventory and put it in the board
 ;; return the board if (no arrow left in inventory) or (arrow not in inventory)
 (var toBoardArrow (function (arrow inventory board)
-                            (display (hasArrow arrow inventory))
                             (if (|| (true? (isEmptyInventory inventory))
                                  (false? (hasArrow arrow inventory)))
                                 board
@@ -281,26 +374,32 @@
 (var CANVAS_GROUND ($ "canvas.ground"))
 (var CANVAS_SELECTION ($ "canvas.selection"))
 (var CANVAS_ARROW ($ "canvas.arrow"))
+(var CANVAS_INVENTORY ($ "canvas.inventory"))
 (var block_size TILE_SIZE)
 
 (var main (ctx CANVAS_MAIN))
 (var ground (ctx CANVAS_GROUND))
 (var selection (ctx CANVAS_SELECTION))
 (var arrow (ctx CANVAS_ARROW))
+(var inventory (ctx CANVAS_INVENTORY))
 (main.scale 1.0 1.0)
 (ground.scale 1.0 1.0)
 (selection.scale 1.0 1.0)
 (arrow.scale 1.0 1.0)
+(inventory.scale 1.0 1.0)
 
 (var spriteSheet (tileInit))
 
 (var clearMainCanvas (function ()
                                (clr CANVAS_MAIN.width CANVAS_MAIN.height main)))
 (var clearSelectionCanvas (function ()
-                                    (clr
-                                     CANVAS_SELECTION.width
+                                    (clr CANVAS_SELECTION.width
                                      CANVAS_SELECTION.height
                                      selection)))
+(var clearInventoryCanvas (function ()
+                                    (clr CANVAS_INVENTORY.width
+                                         CANVAS_INVENTORY.height
+                                         inventory)))
 
 (tilify 0 0 WIN_WIDTH WIN_HEIGHT (car TILE_SIZE) (car (cdr TILE_SIZE)) ground)
 (var block_selected (list 0 0))
@@ -339,32 +438,52 @@
                                 (if (true? (hasMaxArrow arrowCounter))
                                     (f)
                                   ((cond (= e.keyCode keyboard.UP)
-                                         (set arrowCounter 
-                                              (arrowSelect "UP" spriteSheet
+                                         (set [inventoryArrowList,
+                                              boardArrowList,
+                                              arrowCounter]
+                                              (arrowSelect "UP"
+                                                           spriteSheet
                                                            block_size
                                                            block_selected
-                                                           arrowCounter
+                                                           inventoryArrowList
+                                                           boardArrowList
+                                                           inventory
                                                            arrow))
                                          (= e.keyCode keyboard.RIGHT)
-                                         (set arrowCounter
-                                              (arrowSelect "RIGHT" spriteSheet
+                                         (set [inventoryArrowList,
+                                              boardArrowList,
+                                              arrowCounter]
+                                              (arrowSelect "RIGHT"
+                                                           spriteSheet
                                                            block_size
                                                            block_selected
-                                                           arrowCounter
+                                                           inventoryArrowList
+                                                           boardArrowList
+                                                           inventory
                                                            arrow))
                                          (= e.keyCode keyboard.DOWN)
-                                         (set arrowCounter
-                                              (arrowSelect "DOWN" spriteSheet
+                                         (set [inventoryArrowList,
+                                              boardArrowList,
+                                              arrowCounter]
+                                              (arrowSelect "DOWN"
+                                                           spriteSheet
                                                            block_size
                                                            block_selected
-                                                           arrowCounter
+                                                           inventoryArrowList
+                                                           boardArrowList
+                                                           inventory
                                                            arrow))
                                          (= e.keyCode keyboard.LEFT)
-                                         (set arrowCounter
-                                              (arrowSelect "LEFT" spriteSheet
+                                         (set [inventoryArrowList,
+                                              boardArrowList,
+                                              arrowCounter]
+                                              (arrowSelect "LEFT"
+                                                           spriteSheet
                                                            block_size
                                                            block_selected
-                                                           arrowCounter
+                                                           inventoryArrowList
+                                                           boardArrowList
+                                                           inventory
                                                            arrow))))))
                           false))
 
@@ -387,6 +506,13 @@
 ;; must match levelArrowList length
 (var boardArrowList (list "" "" "" ""))
 
+;; positions of arrows putted on the board
+;; mutable
+(var boardArrowPosition (list (list -100 -100)
+                              (list -100 -100)
+                              (list -100 -100)
+                              (list -100 -100)))
+
 (domArrowCounter arrowCounter)
 (domArrowMax MAX_ARROW)
 (var update (function () (setInterval
@@ -399,5 +525,10 @@
              100)))
 
 ;; load sprites then init game
-(set spriteSheet.onload (function () (update)))
+;; (var renderInventory (function (arrowList image ctx)
+(set spriteSheet.onload (function ()
+                                  (renderInventory inventoryArrowList
+                                                   spriteSheet
+                                                   inventory)
+                                  (update)))
 
