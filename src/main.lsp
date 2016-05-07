@@ -14,7 +14,6 @@
 ;; flip a fn
 (var flip (function (fn) (function (a b) (fn b a))))
 
-
 ;; always false 
 (var f (function () false))
 
@@ -132,10 +131,7 @@
 
 
 ;; user arrow counter 
-(var MAX_ARROW 4)
 (var hasMaxArrow (function (arrows) (if (= arrows MAX_ARROW) true false)))
-(var arrowCounterAdd (function (currentCounter) (+ currentCounter 1)))
-(var arrowCounterSub (function (currentCounter) (- currentCounter 1)))
 
 ;; append arrow counter to dom
 (var domArrowCounter (function (arrowCounter)
@@ -194,12 +190,40 @@
 
                                       ;; clear block where the arrow will be put
                                       (ctx.clearRect x y dw dh)
+                                      (set boardArrowPosition
+                                           (addArrowPosition selectedBlock
+                                                             boardArrowPosition
+                                                             []))
+
+                                      ;; compute arrow collision box
+                                      (set padd 5)
+                                      (set center_size (list (- (car block_size)
+                                                                5)
+                                                             (- (car (cdr block_size))
+                                                                5)))
 
                                       ;; render arrow
                                       (drawSprite arrowTileSet[currentDirection] 
                                                   (list x y dw dh)
                                                   image
                                                   ctx)
+
+                                      ;; render arrow collision box
+                                      ;; debug purpose
+                                      ;; TODO: remove
+                                      (each boardArrowPosition
+                                            (function (position)
+                                                      (set center
+                                                           (centerize position
+                                                                      center_size))
+                                                      (rect center
+                                                            (list 5 5)
+                                                            ctx)
+                                                      (background "blue" ctx)
+                                                      ))
+
+
+                                      ;; render inventory arrows
                                       (renderInventory inventory
                                                        image
                                                        inventoryCtx)
@@ -252,6 +276,7 @@
                                               (cons (car arrowList) acc)
                                               false))))))
 
+;; remove arrow position of the position list
 (var removeArrowPosition (function (currentPosition arrowList acc found) 
                                    (set [x, y] (car arrowList))
                                    (if (true? found)
@@ -271,10 +296,7 @@
                                          (removeArrowPosition currentPosition
                                                               (cdr arrowList)
                                                               (cons (car arrowList) acc)
-                                                              false)
-                                           )
-                                         )
-                                     )))
+                                                              false))))))
 
 ;; add arrow to an arrow list
 ;; find where the empty ("") slot is and replace by current Arrow
@@ -370,6 +392,8 @@
 (var TILE_SIZE (list 25 15)) ;; px
 (var WIN_WIDTH 800) ;; px
 (var WIN_HEIGHT 600) ;; px
+(var GAME_WIDTH 270)
+(var GAME_HEIGHT 130)
 (var CANVAS_MAIN ($ "canvas.main"))
 (var CANVAS_GROUND ($ "canvas.ground"))
 (var CANVAS_SELECTION ($ "canvas.selection"))
@@ -404,95 +428,97 @@
 (tilify 0 0 WIN_WIDTH WIN_HEIGHT (car TILE_SIZE) (car (cdr TILE_SIZE)) ground)
 (var block_selected (list 0 0))
 
-(listen "keyup" (function (e)
-                          (e.preventDefault)
-                          (domArrowCounter arrowCounter)
-                          (cond (= e.keyCode keyboard.SPACE)
-                                (set selectMode (toggleMode selectMode)))
-                          (cond (= selectMode "navigation")
-                                ((cond (= e.keyCode keyboard.UP)
-                                       (clearSelectionCanvas
-                                        (set block_selected
-                                             (moveSelect "UP"
-                                                         block_size
-                                                         block_selected))))
-                                 (cond (= e.keyCode keyboard.RIGHT)
-                                       (clearSelectionCanvas
-                                        (set block_selected
-                                             (moveSelect "RIGHT"
-                                                         block_size
-                                                         block_selected))))
-                                 (cond (= e.keyCode keyboard.DOWN)
-                                       (clearSelectionCanvas
-                                        (set block_selected
-                                             (moveSelect "DOWN"
-                                                         block_size
-                                                         block_selected))))
-                                 (cond (= e.keyCode keyboard.LEFT)
-                                       (clearSelectionCanvas
-                                        (set block_selected
-                                             (moveSelect "LEFT"
-                                                         block_size
-                                                         block_selected))))))
-                          (cond (= selectMode "arrow")
-                                (if (true? (hasMaxArrow arrowCounter))
-                                    (f)
-                                  ((cond (= e.keyCode keyboard.UP)
-                                         (set [inventoryArrowList,
-                                              boardArrowList,
-                                              arrowCounter]
-                                              (arrowSelect "UP"
-                                                           spriteSheet
-                                                           block_size
-                                                           block_selected
-                                                           inventoryArrowList
-                                                           boardArrowList
-                                                           inventory
-                                                           arrow))
-                                         (= e.keyCode keyboard.RIGHT)
-                                         (set [inventoryArrowList,
-                                              boardArrowList,
-                                              arrowCounter]
-                                              (arrowSelect "RIGHT"
-                                                           spriteSheet
-                                                           block_size
-                                                           block_selected
-                                                           inventoryArrowList
-                                                           boardArrowList
-                                                           inventory
-                                                           arrow))
-                                         (= e.keyCode keyboard.DOWN)
-                                         (set [inventoryArrowList,
-                                              boardArrowList,
-                                              arrowCounter]
-                                              (arrowSelect "DOWN"
-                                                           spriteSheet
-                                                           block_size
-                                                           block_selected
-                                                           inventoryArrowList
-                                                           boardArrowList
-                                                           inventory
-                                                           arrow))
-                                         (= e.keyCode keyboard.LEFT)
-                                         (set [inventoryArrowList,
-                                              boardArrowList,
-                                              arrowCounter]
-                                              (arrowSelect "LEFT"
-                                                           spriteSheet
-                                                           block_size
-                                                           block_selected
-                                                           inventoryArrowList
-                                                           boardArrowList
-                                                           inventory
-                                                           arrow))))))
-                          false))
+(var listenTo(function (e)
+                       (e.preventDefault)
+                       (domArrowCounter arrowCounter)
+                       (cond (= e.keyCode keyboard.SPACE)
+                             (set selectMode (toggleMode selectMode)))
+                       (cond (= selectMode "navigation")
+                             ((cond (= e.keyCode keyboard.UP)
+                                    (clearSelectionCanvas
+                                     (set block_selected
+                                          (moveSelect "UP"
+                                                      block_size
+                                                      block_selected))))
+                              (cond (= e.keyCode keyboard.RIGHT)
+                                    (clearSelectionCanvas
+                                     (set block_selected
+                                          (moveSelect "RIGHT"
+                                                      block_size
+                                                      block_selected))))
+                              (cond (= e.keyCode keyboard.DOWN)
+                                    (clearSelectionCanvas
+                                     (set block_selected
+                                          (moveSelect "DOWN"
+                                                      block_size
+                                                      block_selected))))
+                              (cond (= e.keyCode keyboard.LEFT)
+                                    (clearSelectionCanvas
+                                     (set block_selected
+                                          (moveSelect "LEFT"
+                                                      block_size
+                                                      block_selected))))))
+                       (cond (= selectMode "arrow")
+                             (if (true? (hasMaxArrow arrowCounter))
+                                 (f)
+                               ((cond (= e.keyCode keyboard.UP)
+                                      (set [inventoryArrowList,
+                                           boardArrowList,
+                                           arrowCounter]
+                                           (arrowSelect "UP"
+                                                        spriteSheet
+                                                        block_size
+                                                        block_selected
+                                                        inventoryArrowList
+                                                        boardArrowList
+                                                        inventory
+                                                        arrow))
+                                      (= e.keyCode keyboard.RIGHT)
+                                      (set [inventoryArrowList,
+                                           boardArrowList,
+                                           arrowCounter]
+                                           (arrowSelect "RIGHT"
+                                                        spriteSheet
+                                                        block_size
+                                                        block_selected
+                                                        inventoryArrowList
+                                                        boardArrowList
+                                                        inventory
+                                                        arrow))
+                                      (= e.keyCode keyboard.DOWN)
+                                      (set [inventoryArrowList,
+                                           boardArrowList,
+                                           arrowCounter]
+                                           (arrowSelect "DOWN"
+                                                        spriteSheet
+                                                        block_size
+                                                        block_selected
+                                                        inventoryArrowList
+                                                        boardArrowList
+                                                        inventory
+                                                        arrow))
+                                      (= e.keyCode keyboard.LEFT)
+                                      (set [inventoryArrowList,
+                                           boardArrowList,
+                                           arrowCounter]
+                                           (arrowSelect "LEFT"
+                                                        spriteSheet
+                                                        block_size
+                                                        block_selected
+                                                        inventoryArrowList
+                                                        boardArrowList
+                                                        inventory
+                                                        arrow))))))
+                       false))
 
-(var x 0)
+;; current arrow putted in the board
+;; debug purpose
 (var arrowCounter 0)
 
 ;; available arrows for current stage
 ;; immutable
 (var levelArrowList (list "UP" "DOWN" "LEFT" "LEFT"))
+(var MAX_ARROW levelArrowList.length)
 
 ;; stack of arrows available for the player
 ;; mutable
@@ -513,14 +539,94 @@
                               (list -100 -100)
                               (list -100 -100)))
 
+;; arrow counter
+;; debug purpose
 (domArrowCounter arrowCounter)
+
+;; MAX_ARROW
+;; debug purpose
 (domArrowMax MAX_ARROW)
+
+;; game box collision
+(var checkCollideGame (function(position game)
+                               (set [x, y] position)
+                               (set [w, h] game)
+                               (||
+                                (|| (< x 0) (< y 0))
+                                (|| (> x w) (> y h)))))
+(var isRightCorner (function (x) (>= x GAME_WIDTH)))
+(var isLeftCorner (function (x) (<= x 0)))
+
+;; block init
+;; debug purpose
+(var mouse (list 0 0))
+(set [x,y] mouse)
+
+;; movements
+(var goUp (function (y velocity)
+                    (- y velocity)))
+(var goLeft (function (x velocity)
+                      (+ x velocity)))
+(var goDown (function (y velocity)
+                      (+ y velocity)))
+(var goRight (function(x velocity)
+                      (- x velocity)))
+
+(var collideGameTop (function (position)
+                              (set [x, y] position)
+                              
+                              (if (= isRightCorner x) goLeft goRight)))
+
+;; (display ((collideGameTop (list 100 100)) 15 5))
+
+;; speed states 
+(var resetSpeed (function () 0))
+(var normalSpeed (function () 5))
+(var lowSpeed (function () 1))
+(var highSpeed (function() 10))
+
+;; spawn entity
+(var spawnEntity (function (spawnPosition size ctx)
+                           (var spawnEntity spawnPosition)
+                           (rect spawnPosition size ctx)
+                           (background "red" ctx)
+                           spawnEntity))
+
+;; move entity
+(var moveEntity (function (position velocity direction)
+                          (var entity position)
+                          (cond
+                           (= direction "UP")
+                           (set entity (list (car position)
+                                             (goUp (car (cdr position))
+                                                   (car(cdr velocity)))))
+                           (= direction "RIGHT")
+                           (set entity (list (goRight (car position)
+                                                      (car velocity))
+                                             (car (cdr position))))
+                           (= direction "BOTTOM")
+                           (set entity (list (car position)
+                                             (goDown (car (cdr position))
+                                                     (car (cdr velocity)))))
+                           (= direction "LEFT")
+                           (set entity (list (goLeft (car position)
+                                                     (car velocity))
+                                             (car (cdr position)))))
+                          entity))
+;; spawn a mouse
+(var ent (spawnEntity mouse block_size main))
+
+;; main loop
 (var update (function () (setInterval
              (function()
                       (clearMainCanvas)
-                      (if (= x 800) (clearInterval update))
-                      (rect (list x 0) block_size main)
+                      (if (> (car (cdr ent)) GAME_HEIGHT) (clearInterval update)
+                        (set ent
+                             (moveEntity ent
+                                         (list (normalSpeed) (normalSpeed))
+                                         "BOTTOM")))
                       (select block_selected block_size selection)
+                      (rect ent block_size main)
                       (background "red" main))
              100)))
 
@@ -530,5 +636,6 @@
                                   (renderInventory inventoryArrowList
                                                    spriteSheet
                                                    inventory)
+                                  (listen "keyup" (function (e) (listenTo e)))
                                   (update)))
 

@@ -127,17 +127,10 @@ var moveSelect = function(currentDirection,padd,selectionBlock) {
                     list((x - xPadd),y) :
                     undefined))));
 };
-var MAX_ARROW = 4;
 var hasMaxArrow = function(arrows) {
     return ((arrows === MAX_ARROW) ?
         true :
         false);
-};
-var arrowCounterAdd = function(currentCounter) {
-    return (currentCounter + 1);
-};
-var arrowCounterSub = function(currentCounter) {
-    return (currentCounter - 1);
 };
 var domArrowCounter = function(arrowCounter) {
     var el = $(".arrow-counter");
@@ -176,7 +169,15 @@ var arrowSelect = function(currentDirection,image,sizeBlock,selectedBlock,invent
             transfer = toBoardArrow(currentDirection,inventory,board);
             [inventory, board] = transfer;
             ctx.clearRect(x,y,dw,dh);
+            boardArrowPosition = addArrowPosition(selectedBlock,boardArrowPosition,[]);
+            padd = 5;
+            center_size = list((car(block_size) - 5),(car(cdr(block_size)) - 5));
             drawSprite(arrowTileSet[currentDirection],list(x,y,dw,dh),image,ctx);
+            (boardArrowPosition).forEach(function(position) {
+                center = centerize(position,center_size);
+                rect(center,list(5,5),ctx);
+                return background("blue",ctx);
+            });
             renderInventory(inventory,image,inventoryCtx);
             return list(inventory,board,countBoard(board,0));
         })());
@@ -229,8 +230,6 @@ var removeArrowPosition = function(currentPosition,arrowList,acc,found) {
                 removeArrowPosition(currentPosition,arrowList,acc,true) :
                 removeArrowPosition(currentPosition,cdr(arrowList),cons(car(arrowList),acc),false))));
 };
-display(removeArrowPosition(list(100,100),list(list(100,100)),[],false));
-display(removeArrowPosition(list(100,100),list(list(100,100),list(200,100),list(50,50)),[],false));
 var addArrow = function(currentArrow,arrowList,acc) {
     ((typeof(acc) === "undefined") ?
         acc = [] :
@@ -315,6 +314,8 @@ var tileInit = function() {
 var TILE_SIZE = list(25,15);
 var WIN_WIDTH = 800;
 var WIN_HEIGHT = 600;
+var GAME_WIDTH = 270;
+var GAME_HEIGHT = 130;
 var CANVAS_MAIN = $("canvas.main");
 var CANVAS_GROUND = $("canvas.ground");
 var CANVAS_SELECTION = $("canvas.selection");
@@ -343,7 +344,7 @@ var clearInventoryCanvas = function() {
 };
 tilify(0,0,WIN_WIDTH,WIN_HEIGHT,car(TILE_SIZE),car(cdr(TILE_SIZE)),ground);
 var block_selected = list(0,0);
-listen("keyup",function(e) {
+var listenTo = function(e) {
     e.preventDefault();
     domArrowCounter(arrowCounter);
     ((e.keyCode === keyboard.SPACE) ?
@@ -365,44 +366,110 @@ listen("keyup",function(e) {
             f() :
             ((e.keyCode === keyboard.UP) ?
                 [inventoryArrowList,
-                                              boardArrowList,
-                                              arrowCounter] = arrowSelect("UP",spriteSheet,block_size,block_selected,inventoryArrowList,boardArrowList,inventory,arrow) :
+                                           boardArrowList,
+                                           arrowCounter] = arrowSelect("UP",spriteSheet,block_size,block_selected,inventoryArrowList,boardArrowList,inventory,arrow) :
                 ((e.keyCode === keyboard.RIGHT) ?
                     [inventoryArrowList,
-                                              boardArrowList,
-                                              arrowCounter] = arrowSelect("RIGHT",spriteSheet,block_size,block_selected,inventoryArrowList,boardArrowList,inventory,arrow) :
+                                           boardArrowList,
+                                           arrowCounter] = arrowSelect("RIGHT",spriteSheet,block_size,block_selected,inventoryArrowList,boardArrowList,inventory,arrow) :
                     ((e.keyCode === keyboard.DOWN) ?
                         [inventoryArrowList,
-                                              boardArrowList,
-                                              arrowCounter] = arrowSelect("DOWN",spriteSheet,block_size,block_selected,inventoryArrowList,boardArrowList,inventory,arrow) :
+                                           boardArrowList,
+                                           arrowCounter] = arrowSelect("DOWN",spriteSheet,block_size,block_selected,inventoryArrowList,boardArrowList,inventory,arrow) :
                         ((e.keyCode === keyboard.LEFT) ?
                             [inventoryArrowList,
-                                              boardArrowList,
-                                              arrowCounter] = arrowSelect("LEFT",spriteSheet,block_size,block_selected,inventoryArrowList,boardArrowList,inventory,arrow) :
+                                           boardArrowList,
+                                           arrowCounter] = arrowSelect("LEFT",spriteSheet,block_size,block_selected,inventoryArrowList,boardArrowList,inventory,arrow) :
                             undefined))))()) :
         undefined);
     return false;
-});
-var x = 0;
+};
 var arrowCounter = 0;
 var levelArrowList = list("UP","DOWN","LEFT","LEFT");
+var MAX_ARROW = levelArrowList.length;
 var inventoryArrowList = levelArrowList;
 var boardArrowList = list("","","","");
 var boardArrowPosition = list(list(-100,-100),list(-100,-100),list(-100,-100),list(-100,-100));
 domArrowCounter(arrowCounter);
 domArrowMax(MAX_ARROW);
+var checkCollideGame = function(position,game) {
+    [x, y] = position;
+    [w, h] = game;
+    return (((x < 0) || (y < 0)) || ((x > w) || (y > h)));
+};
+var isRightCorner = function(x) {
+    return (x >= GAME_WIDTH);
+};
+var isLeftCorner = function(x) {
+    return (x <= 0);
+};
+var mouse = list(0,0);
+[x,y] = mouse;
+var goUp = function(y,velocity) {
+    return (y - velocity);
+};
+var goLeft = function(x,velocity) {
+    return (x + velocity);
+};
+var goDown = function(y,velocity) {
+    return (y + velocity);
+};
+var goRight = function(x,velocity) {
+    return (x - velocity);
+};
+var collideGameTop = function(position) {
+    [x, y] = position;
+    return ((isRightCorner === x) ?
+        goLeft :
+        goRight);
+};
+var resetSpeed = function() {
+    return 0;
+};
+var normalSpeed = function() {
+    return 5;
+};
+var lowSpeed = function() {
+    return 1;
+};
+var highSpeed = function() {
+    return 10;
+};
+var spawnEntity = function(spawnPosition,size,ctx) {
+    var spawnEntity = spawnPosition;
+    rect(spawnPosition,size,ctx);
+    background("red",ctx);
+    return spawnEntity;
+};
+var moveEntity = function(position,velocity,direction) {
+    var entity = position;
+    ((direction === "UP") ?
+        entity = list(car(position),goUp(car(cdr(position)),car(cdr(velocity)))) :
+        ((direction === "RIGHT") ?
+            entity = list(goRight(car(position),car(velocity)),car(cdr(position))) :
+            ((direction === "BOTTOM") ?
+                entity = list(car(position),goDown(car(cdr(position)),car(cdr(velocity)))) :
+                ((direction === "LEFT") ?
+                    entity = list(goLeft(car(position),car(velocity)),car(cdr(position))) :
+                    undefined))));
+    return entity;
+};
+var ent = spawnEntity(mouse,block_size,main);
 var update = function() {
     return setInterval(function() {
         clearMainCanvas();
-        ((x === 800) ?
+        ((car(cdr(ent)) > GAME_HEIGHT) ?
             clearInterval(update) :
-            undefined);
-        rect(list(x,0),block_size,main);
+            ent = moveEntity(ent,list(normalSpeed(),normalSpeed()),"BOTTOM"));
         select(block_selected,block_size,selection);
+        rect(ent,block_size,main);
         return background("red",main);
     },100);
 };
 spriteSheet.onload = function() {
     renderInventory(inventoryArrowList,spriteSheet,inventory);
+    listen("keyup",function(e) {
+        return listenTo(e);
+    });
     return update();
 };
