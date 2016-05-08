@@ -394,6 +394,7 @@
 (var WIN_HEIGHT 600) ;; px
 (var GAME_WIDTH 270)
 (var GAME_HEIGHT 130)
+(var GAME_BOX (list GAME_WIDTH GAME_HEIGHT))
 (var CANVAS_MAIN ($ "canvas.main"))
 (var CANVAS_GROUND ($ "canvas.ground"))
 (var CANVAS_SELECTION ($ "canvas.selection"))
@@ -547,37 +548,98 @@
 ;; debug purpose
 (domArrowMax MAX_ARROW)
 
-;; game box collision
-(var checkCollideGame (function(position game)
-                               (set [x, y] position)
-                               (set [w, h] game)
-                               (||
-                                (|| (< x 0) (< y 0))
-                                (|| (> x w) (> y h)))))
-(var isRightCorner (function (x) (>= x GAME_WIDTH)))
-(var isLeftCorner (function (x) (<= x 0)))
 
 ;; block init
 ;; debug purpose
-(var mouse (list 0 0))
+(var mouse (list 0 120))
 (set [x,y] mouse)
 
 ;; movements
 (var goUp (function (y velocity)
                     (- y velocity)))
 (var goLeft (function (x velocity)
-                      (+ x velocity)))
+                      (- x velocity)))
 (var goDown (function (y velocity)
                       (+ y velocity)))
 (var goRight (function(x velocity)
-                      (- x velocity)))
+                      (+ x velocity)))
 
-(var collideGameTop (function (position)
+
+(var isRightCorner (function (x) (>= x GAME_WIDTH)))
+(var isBottomCorner (function (y) (> y GAME_HEIGHT)))
+(var isTopCorner (function (y) (<= y 0)))
+(var isLeftCorner (function (x) (<= x 0)))
+
+;; game box collision
+(var checkCollideGame (function(position gameBox)
+                               (set [x, y] position)
+                               (set [w, h] gameBox)
+                               (||
+                                (|| (<= x 0) (<= y 0))
+                                (|| (> x w) (> y h)))))
+(var collideTopGame (function (position gameBox)
                               (set [x, y] position)
-                              
-                              (if (= isRightCorner x) goLeft goRight)))
+                              (set [w, h] gameBox)
+                              (<= y 0)))
 
-;; (display ((collideGameTop (list 100 100)) 15 5))
+(var collideBottomGame (function (position gameBox)
+                                 (set [x, y] position)
+                                 (set [w, h] gameBox)
+                                 (> y h)))
+
+(var collideRightGame (function (position gameBox)
+                                (set [x, y] position)
+                                (set [w, h] gameBox)
+                                (> x w)))
+
+(var collideLeftGame (function (position gameBox)
+                               (set [x, y] position)
+                               (set [w, h] gameBox)
+                               (<= x 0)))
+
+;; redirectTop: redirect entity direction
+;; when collide with top
+;; when coming from bottom
+(var redirectTop (function (position)
+                              (set [x, y] position)
+                              (cond
+                               (true? (|| (false? (isRightCorner x))
+                                          (false? (isLeftCorner x)))) "LEFT"
+                              (true? (isRightCorner x)) "LEFT"
+                              (true? (isLeftCorner x)) "RIGHT")))
+
+;; redirectBottom: redirect entity direction
+;; when collide with bottom
+;; when coming from top
+(var redirectBottom (function (position)
+                              (set [x, y] position)
+                              (cond
+                               (true? (|| (false? (isRightCorner x))
+                                       (false? (isLeftCorner x)))) "RIGHT"
+                                       (true? (isRightCorner x)) "LEFT"
+                                       (true? (isLeftCorner x)) "RIGHT")))
+
+;; redirectRight: redirect entity direction
+;; when collide with right
+;; when coming from left
+(var redirectRight (function (position)
+                             (set [x, y] position)
+                             (cond
+                                 (true? (isBottomCorner y)) "UP"
+                                 (true? (isTopCorner y))"DOWN"
+                                 (true? (|| (false? (isBottomCorner y))
+                                         (false? (isTopcorner y)))) "UP")))
+
+;; redirectLeft: redirect entity direction
+;; when collide with left
+;; when coming from right
+(var redirectLeft (function (position)
+                            (set [x, y] position)
+                            (cond
+                             (true? (isBottomCorner y)) "UP"
+                             (true? (isTopCorner y))"DOWN"
+                             (true? (|| (false? (isBottomCorner y))
+                                     (false? (isTopcorner y)))) "DOWN")))
 
 ;; speed states 
 (var resetSpeed (function () 0))
@@ -604,7 +666,7 @@
                            (set entity (list (goRight (car position)
                                                       (car velocity))
                                              (car (cdr position))))
-                           (= direction "BOTTOM")
+                           (= direction "DOWN")
                            (set entity (list (car position)
                                              (goDown (car (cdr position))
                                                      (car (cdr velocity)))))
@@ -615,16 +677,41 @@
                           entity))
 ;; spawn a mouse
 (var ent (spawnEntity mouse block_size main))
+(var init true)
 
 ;; main loop
 (var update (function () (setInterval
              (function()
                       (clearMainCanvas)
                       (if (> (car (cdr ent)) GAME_HEIGHT) (clearInterval update)
-                        (set ent
-                             (moveEntity ent
-                                         (list (normalSpeed) (normalSpeed))
-                                         "BOTTOM")))
+                        (if (true? init)
+                        (set ent (moveEntity ent
+                                             (list (normalSpeed) (normalSpeed))
+                                             "RIGHT"))))
+                      (when (true? (checkCollideGame ent GAME_BOX))
+                        (set init false)
+                        (cond
+                         (true? (collideBottomGame ent GAME_BOX))
+                         (set ent (moveEntity ent
+                                              (list (normalSpeed) (resetSpeed))
+                                              (redirectBottom ent))))
+                        (cond
+                         (true? (collideLeftGame ent GAME_BOX))
+                         (set ent (moveEntity ent
+                                              (list (resetSpeed) (normalSpeed))
+                                              (redirectLeft ent))))
+                        (cond
+                         (true? (collideTopGame ent GAME_BOX))
+                         (set ent (moveEntity ent
+                                              (list (normalSpeed) (resetSpeed))
+                                              (redirectTop ent))))
+                        (cond
+                         (true? (collideRightGame ent GAME_BOX))
+                         (set ent (moveEntity ent
+                                              (list (resetSpeed) (normalSpeed))
+                                              (redirectRight ent))))
+                         )
+
                       (select block_selected block_size selection)
                       (rect ent block_size main)
                       (background "red" main))
@@ -637,5 +724,6 @@
                                                    spriteSheet
                                                    inventory)
                                   (listen "keyup" (function (e) (listenTo e)))
-                                  (update)))
+                                  (update)
+                                  ))
 

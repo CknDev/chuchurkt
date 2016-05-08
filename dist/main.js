@@ -316,6 +316,7 @@ var WIN_WIDTH = 800;
 var WIN_HEIGHT = 600;
 var GAME_WIDTH = 270;
 var GAME_HEIGHT = 130;
+var GAME_BOX = list(GAME_WIDTH,GAME_HEIGHT);
 var CANVAS_MAIN = $("canvas.main");
 var CANVAS_GROUND = $("canvas.ground");
 var CANVAS_SELECTION = $("canvas.selection");
@@ -392,36 +393,96 @@ var boardArrowList = list("","","","");
 var boardArrowPosition = list(list(-100,-100),list(-100,-100),list(-100,-100),list(-100,-100));
 domArrowCounter(arrowCounter);
 domArrowMax(MAX_ARROW);
-var checkCollideGame = function(position,game) {
-    [x, y] = position;
-    [w, h] = game;
-    return (((x < 0) || (y < 0)) || ((x > w) || (y > h)));
-};
-var isRightCorner = function(x) {
-    return (x >= GAME_WIDTH);
-};
-var isLeftCorner = function(x) {
-    return (x <= 0);
-};
-var mouse = list(0,0);
+var mouse = list(0,120);
 [x,y] = mouse;
 var goUp = function(y,velocity) {
     return (y - velocity);
 };
 var goLeft = function(x,velocity) {
-    return (x + velocity);
+    return (x - velocity);
 };
 var goDown = function(y,velocity) {
     return (y + velocity);
 };
 var goRight = function(x,velocity) {
-    return (x - velocity);
+    return (x + velocity);
 };
-var collideGameTop = function(position) {
+var isRightCorner = function(x) {
+    return (x >= GAME_WIDTH);
+};
+var isBottomCorner = function(y) {
+    return (y > GAME_HEIGHT);
+};
+var isTopCorner = function(y) {
+    return (y <= 0);
+};
+var isLeftCorner = function(x) {
+    return (x <= 0);
+};
+var checkCollideGame = function(position,gameBox) {
     [x, y] = position;
-    return ((isRightCorner === x) ?
-        goLeft :
-        goRight);
+    [w, h] = gameBox;
+    return (((x <= 0) || (y <= 0)) || ((x > w) || (y > h)));
+};
+var collideTopGame = function(position,gameBox) {
+    [x, y] = position;
+    [w, h] = gameBox;
+    return (y <= 0);
+};
+var collideBottomGame = function(position,gameBox) {
+    [x, y] = position;
+    [w, h] = gameBox;
+    return (y > h);
+};
+var collideRightGame = function(position,gameBox) {
+    [x, y] = position;
+    [w, h] = gameBox;
+    return (x > w);
+};
+var collideLeftGame = function(position,gameBox) {
+    [x, y] = position;
+    [w, h] = gameBox;
+    return (x <= 0);
+};
+var redirectTop = function(position) {
+    [x, y] = position;
+    return ((true === ((false === isRightCorner(x)) || (false === isLeftCorner(x)))) ?
+        "LEFT" :
+        ((true === isRightCorner(x)) ?
+            "LEFT" :
+            ((true === isLeftCorner(x)) ?
+                "RIGHT" :
+                undefined)));
+};
+var redirectBottom = function(position) {
+    [x, y] = position;
+    return ((true === ((false === isRightCorner(x)) || (false === isLeftCorner(x)))) ?
+        "RIGHT" :
+        ((true === isRightCorner(x)) ?
+            "LEFT" :
+            ((true === isLeftCorner(x)) ?
+                "RIGHT" :
+                undefined)));
+};
+var redirectRight = function(position) {
+    [x, y] = position;
+    return ((true === isBottomCorner(y)) ?
+        "UP" :
+        ((true === isTopCorner(y)) ?
+            "DOWN" :
+            ((true === ((false === isBottomCorner(y)) || (false === isTopcorner(y)))) ?
+                "UP" :
+                undefined)));
+};
+var redirectLeft = function(position) {
+    [x, y] = position;
+    return ((true === isBottomCorner(y)) ?
+        "UP" :
+        ((true === isTopCorner(y)) ?
+            "DOWN" :
+            ((true === ((false === isBottomCorner(y)) || (false === isTopcorner(y)))) ?
+                "DOWN" :
+                undefined)));
 };
 var resetSpeed = function() {
     return 0;
@@ -447,7 +508,7 @@ var moveEntity = function(position,velocity,direction) {
         entity = list(car(position),goUp(car(cdr(position)),car(cdr(velocity)))) :
         ((direction === "RIGHT") ?
             entity = list(goRight(car(position),car(velocity)),car(cdr(position))) :
-            ((direction === "BOTTOM") ?
+            ((direction === "DOWN") ?
                 entity = list(car(position),goDown(car(cdr(position)),car(cdr(velocity)))) :
                 ((direction === "LEFT") ?
                     entity = list(goLeft(car(position),car(velocity)),car(cdr(position))) :
@@ -455,12 +516,32 @@ var moveEntity = function(position,velocity,direction) {
     return entity;
 };
 var ent = spawnEntity(mouse,block_size,main);
+var init = true;
 var update = function() {
     return setInterval(function() {
         clearMainCanvas();
         ((car(cdr(ent)) > GAME_HEIGHT) ?
             clearInterval(update) :
-            ent = moveEntity(ent,list(normalSpeed(),normalSpeed()),"BOTTOM"));
+            ((true === init) ?
+                ent = moveEntity(ent,list(normalSpeed(),normalSpeed()),"RIGHT") :
+                undefined));
+        ((true === checkCollideGame(ent,GAME_BOX)) ?
+            (function() {
+                init = false;
+                ((true === collideBottomGame(ent,GAME_BOX)) ?
+                    ent = moveEntity(ent,list(normalSpeed(),resetSpeed()),redirectBottom(ent)) :
+                    undefined);
+                ((true === collideLeftGame(ent,GAME_BOX)) ?
+                    ent = moveEntity(ent,list(resetSpeed(),normalSpeed()),redirectLeft(ent)) :
+                    undefined);
+                ((true === collideTopGame(ent,GAME_BOX)) ?
+                    ent = moveEntity(ent,list(normalSpeed(),resetSpeed()),redirectTop(ent)) :
+                    undefined);
+                return ((true === collideRightGame(ent,GAME_BOX)) ?
+                    ent = moveEntity(ent,list(resetSpeed(),normalSpeed()),redirectRight(ent)) :
+                    undefined);
+            })() :
+            undefined);
         select(block_selected,block_size,selection);
         rect(ent,block_size,main);
         return background("red",main);
