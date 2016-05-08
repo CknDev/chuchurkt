@@ -270,7 +270,16 @@ var isEmptyInventory = function(inventory) {
         f());
 };
 var isEmptyBoard = function(board) {
-    return (board.length === 0);
+    var ln = board.length;
+    var index = 0;
+    (board).forEach(function(item) {
+        return ((car(item) !== -100) ?
+            index = (index + 1) :
+            undefined);
+    });
+    return ((index === 0) ?
+        t() :
+        f());
 };
 var toBoardArrow = function(arrow,inventory,board) {
     return (((true === isEmptyInventory(inventory)) || (false === hasArrow(arrow,inventory))) ?
@@ -484,6 +493,17 @@ var redirectLeft = function(position) {
                 "DOWN" :
                 undefined)));
 };
+var collideEntityArrows = function(ent,arrows) {
+    [x, y] = ent;
+    var i = -1;
+    (arrows).forEach(function(arrow,index) {
+        [aX, aY] = arrow;
+        return (((x === aX) && (y === aY)) ?
+            i = index :
+            undefined);
+    });
+    return i;
+};
 var resetSpeed = function() {
     return 0;
 };
@@ -517,6 +537,7 @@ var moveEntity = function(position,velocity,direction) {
 };
 var ent = spawnEntity(mouse,block_size,main);
 var init = true;
+var currentDirection = -1;
 var update = function() {
     return setInterval(function() {
         clearMainCanvas();
@@ -528,6 +549,14 @@ var update = function() {
         ((true === checkCollideGame(ent,GAME_BOX)) ?
             (function() {
                 init = false;
+                ((false === isEmptyBoard(boardArrowPosition)) ?
+                    (function() {
+                        indexBoard = collideEntityArrows(ent,boardArrowPosition);
+                        return ((indexBoard !== -1) ?
+                            currentDirection = indexBoard :
+                            undefined);
+                    })() :
+                    undefined);
                 ((true === collideBottomGame(ent,GAME_BOX)) ?
                     ent = moveEntity(ent,list(normalSpeed(),resetSpeed()),redirectBottom(ent)) :
                     undefined);
@@ -539,6 +568,19 @@ var update = function() {
                     undefined);
                 return ((true === collideRightGame(ent,GAME_BOX)) ?
                     ent = moveEntity(ent,list(resetSpeed(),normalSpeed()),redirectRight(ent)) :
+                    undefined);
+            })() :
+            undefined);
+        ((-1 !== currentDirection) ?
+            (function() {
+                ent = moveEntity(ent,list(normalSpeed(),resetSpeed()),boardArrowList[currentDirection]);
+            })() :
+            undefined);
+        ((false === isEmptyBoard(boardArrowPosition)) ?
+            (function() {
+                indexBoard = collideEntityArrows(ent,boardArrowPosition);
+                return ((indexBoard !== -1) ?
+                    currentDirection = indexBoard :
                     undefined);
             })() :
             undefined);

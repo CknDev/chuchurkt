@@ -23,6 +23,7 @@
 ;; list : array to list
 (var list (function (...args) (array ...args)))
 
+
 ;; cons : push an element to a list
 (var cons (function (element l)
                     (l.push element)
@@ -335,7 +336,7 @@
                              (list from to)))
 
 
-;; isEmptyInventory: check if board is empty
+;; isEmptyInventory: check if inventory is empty
 (var isEmptyInventory (function (inventory)
                             (var ln inventory.length)
                             (var index 0)
@@ -345,8 +346,15 @@
                                                 (set index (+ index 1)))))
                             (if (= index ln) (t) (f))))
 
-;; isEmptyBoard : check if inventory is empty
-(var isEmptyBoard (function (board) (= board.length 0)))
+;; isEmptyBoard : check if board is empty
+(var isEmptyBoard (function (board)
+                            (var ln board.length)
+                            (var index 0)
+                            (each board
+                                  (function (item)
+                                            (if (!= (car item) -100)
+                                                (set index (+ index 1)))))
+                            (if (= index 0) (t) (f))))
 
 ;; toBoardArrow: pick an arrow from the inventory and put it in the board
 ;; return the board if (no arrow left in inventory) or (arrow not in inventory)
@@ -641,6 +649,17 @@
                              (true? (|| (false? (isBottomCorner y))
                                      (false? (isTopcorner y)))) "DOWN")))
 
+;; collideEntityArrows: check collision between one entiy and a list of arrows
+(var collideEntityArrows (function (ent arrows)
+                                   (set [x, y] ent)
+                                   (var i -1)
+                                   (each arrows (function (arrow index)
+                                                         (set [aX, aY] arrow)
+                                                         (if (&& (= x aX)
+                                                                 (= y aY))
+                                                             (set i index))))
+                                   i))
+
 ;; speed states 
 (var resetSpeed (function () 0))
 (var normalSpeed (function () 5))
@@ -678,8 +697,13 @@
 ;; spawn a mouse
 (var ent (spawnEntity mouse block_size main))
 (var init true)
+(var currentDirection -1)
 
 ;; main loop
+;;;; TODO: arrow direction doesnt work since skybox collision overrides it
+;;;;  indexBoard will go to 0 for a sec then go back
+;;;;  to the direction of the skybox collision
+;;;; We want it to keep the velocity to the direction of arrowDirection 
 (var update (function () (setInterval
              (function()
                       (clearMainCanvas)
@@ -690,6 +714,13 @@
                                              "RIGHT"))))
                       (when (true? (checkCollideGame ent GAME_BOX))
                         (set init false)
+
+                        (when (false? (isEmptyBoard boardArrowPosition))
+                          (set indexBoard (collideEntityArrows ent
+                                                               boardArrowPosition))
+                          (cond (!= indexBoard -1)
+                                (set currentDirection indexBoard)))
+
                         (cond
                          (true? (collideBottomGame ent GAME_BOX))
                          (set ent (moveEntity ent
@@ -709,8 +740,20 @@
                          (true? (collideRightGame ent GAME_BOX))
                          (set ent (moveEntity ent
                                               (list (resetSpeed) (normalSpeed))
-                                              (redirectRight ent))))
-                         )
+                                              (redirectRight ent)))))
+
+
+                      (when (!= -1 currentDirection)
+                        (set ent (moveEntity ent 
+                                             ;; TODO: conditional based on currentDirection
+                                             (list (normalSpeed) (resetSpeed))
+                                             boardArrowList[currentDirection])))
+
+                      (when (false? (isEmptyBoard boardArrowPosition))
+                        (set indexBoard (collideEntityArrows ent
+                                                             boardArrowPosition))
+                        (cond (!= indexBoard -1)
+                              (set currentDirection indexBoard)))
 
                       (select block_selected block_size selection)
                       (rect ent block_size main)
@@ -724,6 +767,5 @@
                                                    spriteSheet
                                                    inventory)
                                   (listen "keyup" (function (e) (listenTo e)))
-                                  (update)
-                                  ))
+                                  (update)))
 
