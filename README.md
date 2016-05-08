@@ -1,7 +1,8 @@
 # ChuChuRockt
 
 ![status](https://img.shields.io/badge/status-WIP-orange.svg)
-![game jam lisp](https://img.shields.io/badge/gamejam-true-ff69b4.svg)
+[![game jam lisp](https://img.shields.io/badge/gamejam-true-ff69b4.svg)][gamejam]
+[![license](https://img.shields.io/github/license/mashape/apistatus.svg?maxAge=2592000)][licence]
 
 Clone of [ChuChuRocket][chuchurocket], a Dreamcast game by the Sonic Team.
 
@@ -43,3 +44,4 @@ $ npm run lisp
 [gamejam]: https://itch.io/jam/spring-2016-lisp-game-jam
 [nodejs]: https://nodejs.org
 [npm]: https://www.npmjs.com
+[licence]: https://github.com/CknDev/chuchurkt/blob/master/LICENSE
