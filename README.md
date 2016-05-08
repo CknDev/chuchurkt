@@ -1,6 +1,6 @@
 # ChuChuRockt
 
-![status](https://img.shields.io/badge/status-WIP-orange.svg)
+![status](https://img.shields.io/badge/status-aborted-lightgrey.svg)
 [![game jam lisp](https://img.shields.io/badge/gamejam-true-ff69b4.svg)][gamejam]
 [![license](https://img.shields.io/github/license/mashape/apistatus.svg?maxAge=2592000)][licence]
 
